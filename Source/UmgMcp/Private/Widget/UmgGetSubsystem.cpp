@@ -208,10 +208,54 @@ FString UUmgGetSubsystem::QueryWidgetProperties(UWidgetBlueprint* WidgetBlueprin
         if (Property)
         {
             void* ValuePtr = Property->ContainerPtrToValuePtr<void>(FoundWidget);
-            TSharedPtr<FJsonValue> PropertyJsonValue = FJsonObjectConverter::UPropertyToJsonValue(Property, ValuePtr);
-            if (PropertyJsonValue.IsValid())
+            
+            // Safety: Check if this is a UObject property to avoid infinite recursion.
+            // FJsonObjectConverter::UPropertyToJsonValue will recursively serialize
+            // UObject references (e.g., Slot -> Parent -> Children -> Slot -> ...)
+            // which causes EXCEPTION_STACK_OVERFLOW.
+            FObjectProperty* ObjProp = CastField<FObjectProperty>(Property);
+            if (ObjProp)
             {
-                PropertiesJson->SetField(Property->GetName(), PropertyJsonValue);
+                UObject* ObjValue = ObjProp->GetObjectPropertyValue(ValuePtr);
+                if (ObjValue)
+                {
+                    // For UObject properties, serialize a safe summary instead of the full object
+                    TSharedPtr<FJsonObject> ObjSummary = MakeShared<FJsonObject>();
+                    ObjSummary->SetStringField(TEXT("class"), ObjValue->GetClass()->GetName());
+                    ObjSummary->SetStringField(TEXT("name"), ObjValue->GetName());
+                    
+                    // If this is a struct-like object (e.g., UPanelSlot), try to export
+                    // its simple (non-object) properties one level deep
+                    for (TFieldIterator<FProperty> It(ObjValue->GetClass()); It; ++It)
+                    {
+                        FProperty* SubProp = *It;
+                        // Skip UObject sub-properties to avoid recursion
+                        if (CastField<FObjectProperty>(SubProp))
+                            continue;
+                        
+                        void* SubValuePtr = SubProp->ContainerPtrToValuePtr<void>(ObjValue);
+                        TSharedPtr<FJsonValue> SubJsonValue = FJsonObjectConverter::UPropertyToJsonValue(SubProp, SubValuePtr);
+                        if (SubJsonValue.IsValid())
+                        {
+                            ObjSummary->SetField(SubProp->GetName(), SubJsonValue);
+                        }
+                    }
+                    
+                    PropertiesJson->SetObjectField(Property->GetName(), ObjSummary);
+                }
+                else
+                {
+                    PropertiesJson->SetField(Property->GetName(), MakeShared<FJsonValueNull>());
+                }
+            }
+            else
+            {
+                // Non-object properties are safe to serialize normally
+                TSharedPtr<FJsonValue> PropertyJsonValue = FJsonObjectConverter::UPropertyToJsonValue(Property, ValuePtr);
+                if (PropertyJsonValue.IsValid())
+                {
+                    PropertiesJson->SetField(Property->GetName(), PropertyJsonValue);
+                }
             }
         }
     }
