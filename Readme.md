@@ -1,31 +1,113 @@
-[Chinese version please click here](Readme_zh.md)
+> **This is a fork of [winyunq/UnrealMotionGraphicsMCP](https://github.com/winyunq/UnrealMotionGraphicsMCP).** Modified for UE 5.7 compatibility and enhanced widget features.
 
 # UE5-UMG-MCP 🤖📄
 
 **A Version-Controlled AI-Assisted UMG Workflow**
 
-![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)![Status: Experimental](https://img.shields.io/badge/status-experimental-red.svg)![Built with AI](https://img.shields.io/badge/Built%20with-AI%20Assistance-blueviolet.svg)
-
-[Demo Designed A RTS UI](https://youtu.be/O86VCzxyF5o)
-
-[Demo Recreating the UE5 editor](https://youtu.be/h_J70I0m4Ls)
-
-[Demo Recreating the UE5 editor in UMG editor](https://youtu.be/pq12x2MH1L4)
-
-[Chat with Gemini 3 to editor the UMG file](https://youtu.be/93_Fiil9nd8)
-
 ---
 
-### 🛍️ Looking for an easier Setup? Try the Fab Version!
+## Supported MCP Tools
 
-If you find manual plugin configuration and MCP environment setup too cumbersome, check out our commercial version on **Fab**:
-[**UMG MCP on Fab Marketplace**](https://www.fab.com/zh-cn/listings/f70dbcb0-11e4-46bf-b3f7-9f30ba2c9b71)
+### UMG - Introspection
 
-**Differences between Fab and Open Source versions:**
-- **Out-of-the-Box**: The Fab version installs directly via the Unreal Engine launcher, eliminating the need for manual cloning and Python environment setup.
-- **Context Compression**: The Fab version includes advanced context management, automatically filtering redundant MCP history to maximize available tokens for the AI.
-- **Commercial Focus**: While the Open Source version is our protocol testbed, the Fab version is optimized for production business logic. Commercial users receive prioritized support for their specific integration challenges.
-- **Maintained Parity**: We remain committed to open source; all core logic improvements will continue to be synced to this GitHub repository.
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get_widget_schema` | Retrieves the property schema for a widget type | `widget_type: str` |
+| `get_creatable_widget_types` | Returns a list of common creatable widget types | *(none)* |
+
+### UMG - Attention & Context
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get_target_umg_asset` | Gets the current Active Target asset path | *(none)* |
+| `get_last_edited_umg_asset` | Gets the last edited UMG asset path | *(none)* |
+| `get_recently_edited_umg_assets` | Gets a list of recently edited UMG assets | `max_count: int = 5` |
+| `set_target_umg_asset` | Sets the Active Target. Creates the asset if it doesn't exist. Supports specifying parent class for new assets | `asset_path: str`, `parent_class: str = None` (e.g. `/Script/YourModule.YourWidget`) |
+
+### UMG - Sensing (Read)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `get_widget_tree` | Fetches the full widget hierarchy of the Active Target | *(none)* |
+| `query_widget_properties` | Reads specific properties from a widget | `widget_name: str`, `properties: List[str]` |
+| `get_layout_data` | Gets screen-space bounding boxes for widgets | `resolution_width: int = 1920`, `resolution_height: int = 1080` |
+| `check_widget_overlap` | Checks for visual overlaps between widgets | `widget_names: List[str] = None` |
+
+### UMG - Action (Write)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `create_widget` | Creates a new widget under a parent | `parent_name: str`, `widget_type: str`, `new_widget_name: str` |
+| `set_widget_properties` | Modifies properties of an existing widget | `widget_name: str`, `properties: Dict` |
+| `delete_widget` | Removes a widget from the tree | `widget_name: str` |
+| `reparent_widget` | Moves a widget to a new parent | `widget_name: str`, `new_parent_name: str` |
+| `save_asset` | Saves the current asset to disk | *(none)* |
+
+### UMG - File Transformation
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `export_umg_to_json` | Converts a UMG asset to JSON | `asset_path: str`, `widget_name: str = "Root"` |
+| `apply_layout` | Applies a bulk layout (HTML or JSON format) | `layout_content: str`, `widget_name: str = "Root"` |
+
+### Animation & Sequencer
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `set_animation_scope` | Sets the Active Animation scope for subsequent commands | `animation_name: str` |
+| `set_widget_scope` | Sets the Active Widget scope within the current animation | `widget_name: str` |
+| `get_all_animations` | Lists all animations in the asset | *(none)* |
+| `get_animation_keyframes` | Gets keyframes for an animation | `animation_name: str` |
+| `get_animated_widgets` | Gets widgets affected by an animation | `animation_name: str` |
+| `get_animation_full_data` | Gets complete animation data | `animation_name: str` |
+| `get_widget_animation_data` | Gets animation data for a specific widget | `animation_name: str`, `widget_name: str` |
+| `create_animation` | Creates a new animation | `animation_name: str` |
+| `delete_animation` | Deletes an animation | `animation_name: str` |
+| `set_property_keys` | Sets keyframes on a property | `property_name: str`, `keys: List[Dict]` |
+| `remove_property_track` | Removes a property track from the scoped widget | `property_name: str` |
+| `remove_keys` | Removes specific keyframes by time | `property_name: str`, `times: List[float]` |
+
+### Blueprint
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `set_edit_function` | Sets the active function/graph context (e.g., 'EventGraph') | `function_name: str` |
+| `set_cursor_node` | Explicitly sets the Program Counter to a node | `node_id: str` |
+| `get_function_nodes` | Lists all nodes in the active function/graph | *(none)* |
+| `add_step` | Adds an executable node to the current Program Counter | `name: str`, `args: List = None`, `comment: str = None`, `input_wires: Dict = None` |
+| `prepare_value` | Places a non-executable data node (e.g., variable getter) | `name: str`, `args: List = None` |
+| `connect_data_to_pin` | Connects nodes via `NodeID:PinName` format | `source: str`, `target: str` |
+| `add_variable` | Adds a member variable to the blueprint | `name: str`, `type: str`, `subType: str = None` |
+| `delete_variable` | Deletes a member variable | `name: str` |
+| `get_variables` | Lists all member variables | *(none)* |
+| `delete_node` | Deletes a specific node | `node_id: str` |
+| `search_function_library` | Searches for callable functions in the project | `query: str = ""`, `class_name: str = ""` |
+| `compile_blueprint` | Compiles the Active Target blueprint | `blueprint_name: str = None` |
+
+### Material (5 Pillars API)
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `material_set_target` | Sets the target material asset (creates if not found) | `path: str`, `create_if_not_found: bool = True` |
+| `material_define_variable` | Defines external interface parameters | `name: str`, `type: str` |
+| `material_add_node` | Places a MaterialExpression node into the graph | `symbol: str`, `handle: str = None` |
+| `material_delete` | Deletes a node by handle | `handle: str` |
+| `material_connect_nodes` | Establishes node-to-node flow (A → B) | `from_handle: str`, `to_handle: str` |
+| `material_connect_pins` | Surgical wiring between specific pins | `source: str`, `source_pin: str`, `target: str`, `target_pin: str` |
+| `material_set_hlsl_node_io` | Injects HLSL into Custom nodes | `handle: str`, `code: str`, `inputs: List[str]` |
+| `material_set_node_properties` | Sets internal properties for nodes | `handle: str`, `properties: Dict` |
+| `material_compile_asset` | Compiles the material shader | *(none)* |
+| `material_get_pins` | Gets available pins for a node or 'Master' | `handle: str` |
+| `material_get_graph` | Retrieves full graph topology | *(none)* |
+
+### Editor & Level
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `list_assets` | Lists assets in the project content | `class_name: str = None`, `package_path: str = None`, `max_count: int = 50` |
+| `refresh_asset_registry` | Forces Unreal to re-scan disk for assets | `paths: List[str] = None` |
+| `get_actors_in_level` | Gets all actors in the current level | *(none)* |
+| `spawn_actor` | Spawns an actor in the level | `actor_type: str`, `name: str`, `location: List[float] = None`, `rotation: List[float] = None` |
 
 ---
 

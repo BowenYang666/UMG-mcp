@@ -33,7 +33,7 @@
         },
         {
             "name": "set_target_umg_asset",
-            "description": "Sets the **Active Target**. Updates the Cache. If the asset doesn't exist, it will be CREATED.",
+            "description": "Sets the **Active Target**. Updates the Cache. If the asset doesn't exist, it will be CREATED. Optionally specify `parent_class` to set the base class when creating a new Widget Blueprint. Format: `/Script/<ModuleName>.<ClassName>` (e.g. `/Script/MyProject.MyCustomWidget`). If omitted, defaults to UUserWidget.",
             "enabled": true,
             "category": "UMG"
         },

@@ -352,9 +352,16 @@ def normalize_project_path(path: str) -> str:
     return path
 
 @register_tool("set_target_umg_asset", "Sets the target UMG asset.")
-async def set_target_umg_asset(asset_path: str) -> Dict[str, Any]:
+async def set_target_umg_asset(asset_path: str, parent_class: str = None) -> Dict[str, Any]:
     """
-    (Description loaded from prompts.json)
+    Sets the Active Target UMG asset. If the asset doesn't exist, it will be created.
+    
+    Args:
+        asset_path: The asset path (e.g. '/Game/UI/WBP_MyWidget').
+        parent_class: Optional. The parent class path for new assets.
+                      Format: '/Script/<ModuleName>.<ClassName>'
+                      Example: '/Script/MyProject.MyCustomWidget'
+                      If omitted, defaults to UUserWidget.
     """
     # Normalize path to ensure Unreal accepts it
     asset_path = normalize_project_path(asset_path)
@@ -362,7 +369,7 @@ async def set_target_umg_asset(asset_path: str) -> Dict[str, Any]:
     context_manager.set_target(asset_path) # Update local context
     conn = get_unreal_connection()
     umg_attention_client = UMGAttention.UMGAttention(conn)
-    return await umg_attention_client.set_target_umg_asset(asset_path)
+    return await umg_attention_client.set_target_umg_asset(asset_path, parent_class)
 
 # =============================================================================
 #  Category: Sensing

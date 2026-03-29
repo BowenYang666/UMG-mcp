@@ -7,6 +7,8 @@
 #include "AssetToolsModule.h"
 #include "IAssetTools.h"
 #include "WidgetBlueprintFactory.h"
+#include "UObject/UObjectIterator.h"
+#include "Blueprint/UserWidget.h"
 
 // Define a log category for easy debugging.
 DEFINE_LOG_CATEGORY_STATIC(LogUmgAttention, Log, All);
@@ -71,7 +73,7 @@ void UUmgAttentionSubsystem::HandleAssetOpened(UObject* Asset, class IAssetEdito
 	}
 }
 
-bool UUmgAttentionSubsystem::SetTargetUmgAsset(const FString& AssetPath)
+bool UUmgAttentionSubsystem::SetTargetUmgAsset(const FString& AssetPath, const FString& ParentClassName)
 {
     // Validation: Strict check for package path format
     // Must start with /Game, /Engine, or /PluginName (usually /Script or others, but for UMG it's mostly /Game)
@@ -134,6 +136,47 @@ bool UUmgAttentionSubsystem::SetTargetUmgAsset(const FString& AssetPath)
             
             // Create a factory for WidgetBlueprint
             UWidgetBlueprintFactory* Factory = NewObject<UWidgetBlueprintFactory>();
+            
+            // Set parent class if specified
+            if (!ParentClassName.IsEmpty())
+            {
+                UClass* ParentClass = nullptr;
+                
+                // Try multiple lookup strategies
+                // 1. FindObject with exact path (e.g. /Script/ModuleName.ClassName)
+                ParentClass = FindObject<UClass>(nullptr, *ParentClassName);
+                
+                // 2. Try LoadClass (handles deferred loading)
+                if (!ParentClass)
+                {
+                    ParentClass = LoadClass<UUserWidget>(nullptr, *ParentClassName);
+                }
+                
+                // 3. Try with full path format /Script/Module.ClassName
+                if (!ParentClass)
+                {
+                    // If user passed just class name, try to find it by iterating
+                    FString ClassName = FPaths::GetBaseFilename(ParentClassName);
+                    for (TObjectIterator<UClass> It; It; ++It)
+                    {
+                        if (It->GetName() == ClassName && It->IsChildOf(UUserWidget::StaticClass()))
+                        {
+                            ParentClass = *It;
+                            break;
+                        }
+                    }
+                }
+                
+                if (ParentClass && ParentClass->IsChildOf(UUserWidget::StaticClass()))
+                {
+                    Factory->ParentClass = ParentClass;
+                    UE_LOG(LogUmgAttention, Log, TEXT("SetTargetUmgAsset: Using parent class '%s' (resolved to '%s')."), *ParentClassName, *ParentClass->GetPathName());
+                }
+                else
+                {
+                    UE_LOG(LogUmgAttention, Warning, TEXT("SetTargetUmgAsset: Parent class '%s' not found or not a UUserWidget subclass. Using default UUserWidget."), *ParentClassName);
+                }
+            }
             
             UObject* NewAsset = AssetTools.CreateAsset(AssetName, PackagePath, UWidgetBlueprint::StaticClass(), Factory);
             TargetBP = Cast<UWidgetBlueprint>(NewAsset);

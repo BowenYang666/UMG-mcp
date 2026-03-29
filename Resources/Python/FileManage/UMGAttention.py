@@ -22,12 +22,17 @@ class UMGAttention:
         """Gets a list of recently edited UMG assets."""
         return self.client.send_command("get_recently_edited_umg_assets", {"max_count": max_count})
 
-    def set_target_umg_asset(self, asset_path: str) -> Dict[str, Any]:
+    def set_target_umg_asset(self, asset_path: str, parent_class: str = None) -> Dict[str, Any]:
         """
         Sets the UMG asset that should be considered the current attention target.
         This allows programmatically setting the active UMG context.
+        If the asset doesn't exist, it will be created. Use parent_class to specify
+        a custom parent class (e.g. '/Script/MyModule.MyWidget').
         """
-        return self.client.send_command("set_target_umg_asset", {"asset_path": asset_path})
+        params = {"asset_path": asset_path}
+        if parent_class:
+            params["parent_class"] = parent_class
+        return self.client.send_command("set_target_umg_asset", params)
 
     def set_target_graph(self, graph_name: str) -> Dict[str, Any]:
         """

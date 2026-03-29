@@ -60,7 +60,8 @@ TSharedPtr<FJsonObject> FUmgMcpAttentionCommands::HandleCommand(const FString& C
         if (Params && Params->HasField(TEXT("asset_path")))
         {
             FString AssetPath = Params->GetStringField(TEXT("asset_path"));
-            bool bSuccess = AttentionSubsystem->SetTargetUmgAsset(AssetPath);
+            FString ParentClassName = Params->HasField(TEXT("parent_class")) ? Params->GetStringField(TEXT("parent_class")) : TEXT("");
+            bool bSuccess = AttentionSubsystem->SetTargetUmgAsset(AssetPath, ParentClassName);
             if (bSuccess)
             {
                 Response->SetStringField(TEXT("status"), TEXT("success"));
