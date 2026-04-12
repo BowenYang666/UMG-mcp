@@ -40,6 +40,30 @@ from Bridge import UMGHTMLParser
 from Editor import UMGEditor
 from Material import UMGMaterial
 
+# Read-only mode: when enabled, only read/query tools are registered
+# Set via env var UMGMCP_READ_ONLY=1 in your MCP client config
+IS_READ_ONLY = os.environ.get("UMGMCP_READ_ONLY", "0") == "1"
+
+# Tools that are safe in read-only mode
+READ_ONLY_TOOLS = {
+    # Introspection
+    "get_widget_schema", "get_creatable_widget_types",
+    # Attention & Context (read)
+    "get_target_umg_asset", "get_last_edited_umg_asset",
+    "get_recently_edited_umg_assets", "set_target_umg_asset",
+    # Sensing
+    "get_widget_tree", "query_widget_properties",
+    "get_layout_data", "check_widget_overlap",
+    # Animation (read)
+    "get_all_animations", "get_animation_keyframes",
+    "get_animated_widgets", "get_animation_full_data",
+    "get_widget_animation_data",
+    # Blueprint (read)
+    "get_function_nodes", "get_variables", "search_function_library",
+    # Editor (read)
+    "list_assets",
+}
+
 
 
 # Configure logging
@@ -266,9 +290,14 @@ for p_data in PROMPTS_CONFIG:
 def register_tool(name: str, default_desc: str):
     """
     Decorator to register a tool with MCP only if it is enabled in prompts.json.
+    In read-only mode, only tools in READ_ONLY_TOOLS are registered.
     This effectively compresses the context by hiding disabled tools from the AI.
     """
     def decorator(func):
+        # Check read-only mode
+        if IS_READ_ONLY and name not in READ_ONLY_TOOLS:
+            return func
+        
         config = TOOLS_CONFIG.get(name, {})
         is_enabled = config.get("enabled", True)
         if is_enabled:
@@ -354,14 +383,10 @@ def normalize_project_path(path: str) -> str:
 @register_tool("set_target_umg_asset", "Sets the target UMG asset.")
 async def set_target_umg_asset(asset_path: str, parent_class: str = None) -> Dict[str, Any]:
     """
-    Sets the Active Target UMG asset. If the asset doesn't exist, it will be created.
-    
-    Args:
-        asset_path: The asset path (e.g. '/Game/UI/WBP_MyWidget').
-        parent_class: Optional. The parent class path for new assets.
-                      Format: '/Script/<ModuleName>.<ClassName>'
-                      Example: '/Script/MyProject.MyCustomWidget'
-                      If omitted, defaults to UUserWidget.
+    Sets the Active Target UMG asset.
+    In read-only mode, will NOT create the asset if it doesn't exist.
+    In normal mode, creates the asset if missing. Use parent_class to specify
+    a custom parent class (e.g. '/Script/MyModule.MyCustomWidget').
     """
     # Normalize path to ensure Unreal accepts it
     asset_path = normalize_project_path(asset_path)
@@ -369,6 +394,15 @@ async def set_target_umg_asset(asset_path: str, parent_class: str = None) -> Dic
     context_manager.set_target(asset_path) # Update local context
     conn = get_unreal_connection()
     umg_attention_client = UMGAttention.UMGAttention(conn)
+    
+    if IS_READ_ONLY:
+        # In readonly mode, just try to set target without creating
+        # We call get_target first to check, then set only if asset exists
+        result = await umg_attention_client.set_target_umg_asset(asset_path)
+        if result and result.get("status") == "error":
+            return {"status": "error", "error": f"Asset '{asset_path}' not found. Read-only mode: will not create new assets."}
+        return result
+    
     return await umg_attention_client.set_target_umg_asset(asset_path, parent_class)
 
 # =============================================================================

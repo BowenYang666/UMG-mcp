@@ -6,6 +6,20 @@
 
 ---
 
+## Read-Only Mode
+
+Set `UMGMCP_READ_ONLY=1` env var to restrict to read/query tools only. Write tools (create, delete, set, save, compile, etc.) will not be registered.
+
+```json
+"UmgMcp": {
+  "command": "uv",
+  "args": ["run", "--directory", "<PATH>/Resources/Python", "UmgMcpServer.py"],
+  "env": { "UMGMCP_READ_ONLY": "1" }
+}
+```
+
+In read-only mode, `set_target_umg_asset` will NOT create new assets if they don't exist.
+
 ## Supported MCP Tools
 
 ### UMG - Introspection
@@ -22,7 +36,7 @@
 | `get_target_umg_asset` | Gets the current Active Target asset path | *(none)* |
 | `get_last_edited_umg_asset` | Gets the last edited UMG asset path | *(none)* |
 | `get_recently_edited_umg_assets` | Gets a list of recently edited UMG assets | `max_count: int = 5` |
-| `set_target_umg_asset` | Sets the Active Target. Creates the asset if it doesn't exist. Supports specifying parent class for new assets | `asset_path: str`, `parent_class: str = None` (e.g. `/Script/YourModule.YourWidget`) |
+| `set_target_umg_asset` | Sets the Active Target. Creates the asset if it doesn't exist (disabled in read-only mode). Supports specifying parent class for new assets | `asset_path: str`, `parent_class: str = None` (e.g. `/Script/YourModule.YourWidget`) |
 
 ### UMG - Sensing (Read)
 
@@ -84,21 +98,9 @@
 | `search_function_library` | Searches for callable functions in the project | `query: str = ""`, `class_name: str = ""` |
 | `compile_blueprint` | Compiles the Active Target blueprint | `blueprint_name: str = None` |
 
-### Material (5 Pillars API)
+### Material (5 Pillars API) - Currently Disabled
 
-| Tool | Description | Parameters |
-|------|-------------|------------|
-| `material_set_target` | Sets the target material asset (creates if not found) | `path: str`, `create_if_not_found: bool = True` |
-| `material_define_variable` | Defines external interface parameters | `name: str`, `type: str` |
-| `material_add_node` | Places a MaterialExpression node into the graph | `symbol: str`, `handle: str = None` |
-| `material_delete` | Deletes a node by handle | `handle: str` |
-| `material_connect_nodes` | Establishes node-to-node flow (A → B) | `from_handle: str`, `to_handle: str` |
-| `material_connect_pins` | Surgical wiring between specific pins | `source: str`, `source_pin: str`, `target: str`, `target_pin: str` |
-| `material_set_hlsl_node_io` | Injects HLSL into Custom nodes | `handle: str`, `code: str`, `inputs: List[str]` |
-| `material_set_node_properties` | Sets internal properties for nodes | `handle: str`, `properties: Dict` |
-| `material_compile_asset` | Compiles the material shader | *(none)* |
-| `material_get_pins` | Gets available pins for a node or 'Master' | `handle: str` |
-| `material_get_graph` | Retrieves full graph topology | *(none)* |
+Material tools are commented out in the server. Uncomment in `UmgMcpServer.py` to re-enable.
 
 ### Editor & Level
 
