@@ -34,6 +34,8 @@ DerivedDataCache/
 __pycache__/
 *.pyc
 *.pyo
+*.egg-info/
+.venv/
 
 # Gemini Temporary Files
 Gemini_*
